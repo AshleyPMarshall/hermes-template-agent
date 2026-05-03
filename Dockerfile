@@ -7,8 +7,12 @@ FROM debian:12-slim
 # Minimal bootstrap deps. Everything else is installed by Nous's installer
 # (which already knows what Hermes needs and keeps that list current).
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
         ca-certificates \
         curl \
+        git \
+        libffi-dev \
+        python3-dev \
         sudo \
         tini \
     && rm -rf /var/lib/apt/lists/*
