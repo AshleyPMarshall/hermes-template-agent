@@ -44,7 +44,11 @@ ENV HERMES_HOME=/data \
 
 EXPOSE 8642
 
-COPY --chown=hermes:hermes entrypoint.sh /home/hermes/entrypoint.sh
-RUN chmod +x /home/hermes/entrypoint.sh
+# Switch back to root so the entrypoint can fix the Railway volume's ownership
+# (it mounts as root-owned). The entrypoint drops privileges to `hermes` after
+# the chown via runuser before exec-ing the agent.
+USER root
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-ENTRYPOINT ["tini", "--", "/home/hermes/entrypoint.sh"]
+ENTRYPOINT ["tini", "--", "/entrypoint.sh"]

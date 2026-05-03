@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -d "${HERMES_HOME}" ] && [ "$(stat -c '%u' "${HERMES_HOME}")" != "$(id -u)" ]; then
-    sudo chown -R "$(id -u):$(id -g)" "${HERMES_HOME}"
+# Stage 1: as root — Railway mounts the volume root-owned. Take ownership for
+# the hermes user, then re-exec this same script as hermes.
+if [ "$(id -u)" = "0" ]; then
+    mkdir -p "${HERMES_HOME}"
+    chown -R hermes:hermes "${HERMES_HOME}"
+    exec runuser -u hermes -- "$0" "$@"
 fi
-mkdir -p "${HERMES_HOME}"
 
+# Stage 2: running as hermes.
 if ! command -v hermes >/dev/null 2>&1; then
     echo "hermes binary not on PATH (PATH=${PATH})" >&2
     exit 1
 fi
 
-# First-boot guard. Without LLM credentials, `hermes gateway` exits
-# immediately and the container crash-loops, blocking `railway ssh` —
-# which is exactly when the operator needs to log in to set credentials up.
-# Idle instead so the operator can shell in and run `hermes auth login`.
+# First-boot guard. Without LLM credentials, `hermes gateway` exits and the
+# container crash-loops, blocking `railway ssh` — which is exactly when the
+# operator needs to log in to set credentials up. Idle instead.
 if [ ! -s "${HERMES_HOME}/auth.json" ] \
    && [ -z "${OPENROUTER_API_KEY:-}" ] \
    && [ -z "${OPENAI_API_KEY:-}" ] \
