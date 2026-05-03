@@ -14,16 +14,34 @@ The companion web UI lives in a separate repo (`hermes-template-workspace`); dep
 
 ## Deploy
 
-1. Fork or clone this repo.
-2. Create a Railway project, then **New Service → GitHub Repo → this repo**.
-3. **Attach a Volume** to the service at mount path `/data` (50 GB is plenty).
-4. Set environment variables — see `.env.example` for the full list. Minimum to start:
-   - `OPENROUTER_API_KEY` (or any other supported provider)
+Each deployment is isolated — env vars live on the Railway service, not in this repo.
+You will create new credentials *per deployment*; nothing from another deployment carries over.
+
+### First-time setup checklist
+
+1. **Fork or clone** this repo into your GitHub account.
+2. **Create a new Railway project**, then **New Service → GitHub Repo → your fork**.
+3. **Create a Railway Volume** in the same project, attach to this service at mount path `/data` (50 GB is plenty).
+4. **Create a fresh Telegram bot** via [@BotFather](https://t.me/BotFather) (`/newbot`) — do not reuse a bot from another deployment.
+5. **Get your Telegram numeric user ID** from [@userinfobot](https://t.me/userinfobot).
+6. **Generate a fresh `HERMES_API_TOKEN`**: `openssl rand -hex 32`. The companion workspace service uses this; do not reuse it across deployments.
+7. **Set environment variables** in Railway. Minimum:
+   - `HERMES_INFERENCE_PROVIDER=openai-codex` (default; or set `OPENROUTER_API_KEY` etc. if using a different provider)
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USERS`, `TELEGRAM_HOME_CHANNEL`
    - `HERMES_TIMEZONE`
-   - `HERMES_API_TOKEN` (random 32+ char string; used by the workspace service later)
-5. Deploy. First boot takes a few minutes (the installer pulls Hermes and its dependencies).
-6. Message your Telegram bot to verify.
+   - `HERMES_API_TOKEN`
+   See `.env.example` for the complete list and inline notes.
+8. **Deploy.** First boot takes 5–10 minutes (Nous installer pulls Hermes and dependencies).
+9. **Complete provider auth** (skip if using a static API key):
+   ```
+   railway ssh --service hermes-agent
+   hermes auth login openai-codex
+   ```
+   Browser device-code flow. Token is written to `/data/auth.json` and persists.
+10. **Redeploy the service** (`railway service redeploy`) so the agent picks up the auth tokens.
+11. **Message your Telegram bot** to verify.
+
+The container idles on first boot if no LLM credentials are present (no `auth.json`, no API key env vars), so you have time to step 9 without crash-loops.
 
 Do **not** publicly expose the service's port. The workspace service (Wave 2) talks to it over Railway's private network only.
 
