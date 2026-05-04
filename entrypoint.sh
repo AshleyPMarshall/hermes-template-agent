@@ -22,20 +22,25 @@ if [ ! -s "${HERMES_HOME}/auth.json" ] \
    && [ -z "${OPENROUTER_API_KEY:-}" ] \
    && [ -z "${OPENAI_API_KEY:-}" ] \
    && [ -z "${ANTHROPIC_API_KEY:-}" ] \
-   && [ -z "${OLLAMA_API_KEY:-}" ]; then
+   && [ -z "${GOOGLE_API_KEY:-}" ] \
+   && [ -z "${GEMINI_API_KEY:-}" ] \
+   && [ -z "${OLLAMA_API_KEY:-}" ] \
+   && [ -z "${DEEPSEEK_API_KEY:-}" ] \
+   && [ -z "${GROQ_API_KEY:-}" ] \
+   && [ -z "${XAI_API_KEY:-}" ]; then
     cat >&2 <<EOF
 ============================================================
 Hermes is waiting for first-time setup.
 
 No LLM credentials found:
   - ${HERMES_HOME}/auth.json missing (OAuth providers)
-  - No OPENROUTER_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY
-    / OLLAMA_API_KEY environment variables set
+  - No supported *_API_KEY env vars set
 
 To finish setup:
   1. railway ssh --service hermes-agent
-  2. hermes auth login \${HERMES_INFERENCE_PROVIDER:-openai-codex}
-  3. railway redeploy --service hermes-agent
+  2. hermes auth add \${HERMES_INFERENCE_PROVIDER:-openai-codex}
+     (or set GOOGLE_API_KEY / OPENAI_API_KEY / etc. via Railway env)
+  3. railway service redeploy --service hermes-agent
 
 Container is idling so the SSH session above will work.
 ============================================================
