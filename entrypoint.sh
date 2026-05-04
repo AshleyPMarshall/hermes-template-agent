@@ -36,11 +36,15 @@ No LLM credentials found:
   - ${HERMES_HOME}/auth.json missing (OAuth providers)
   - No supported *_API_KEY env vars set
 
-To finish setup:
-  1. railway ssh --service hermes-agent
-  2. hermes auth add \${HERMES_INFERENCE_PROVIDER:-openai-codex}
-     (or set GOOGLE_API_KEY / OPENAI_API_KEY / etc. via Railway env)
-  3. railway service redeploy --service hermes-agent
+To finish setup, either:
+  - Set GOOGLE_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY etc.
+    in Railway's Variables tab, or
+  - For OAuth providers (Codex, Qwen, etc.):
+      railway ssh --service hermes-agent
+      hermes auth add <provider>
+
+Then:
+  railway service redeploy --service hermes-agent
 
 Container is idling so the SSH session above will work.
 ============================================================
@@ -48,4 +52,15 @@ EOF
     exec tail -f /dev/null
 fi
 
+# Run the dashboard in the background so the companion workspace service has
+# the extended APIs (Sessions, Skills, Config, Jobs). Bound to 0.0.0.0 for
+# Railway's internal network; --insecure is the dashboard's own warning that
+# it leaves localhost — fine here because Railway only exposes ports we
+# explicitly publish, and the workspace authenticates via HERMES_DASHBOARD_TOKEN.
+hermes dashboard --host 0.0.0.0 --port 9119 --no-open --insecure \
+    > "${HERMES_HOME}/logs/dashboard.stdout.log" 2>&1 &
+DASHBOARD_PID=$!
+echo "[entrypoint] dashboard started in background (pid=${DASHBOARD_PID})" >&2
+
+# Gateway runs in foreground; the container's lifecycle follows it.
 exec hermes gateway

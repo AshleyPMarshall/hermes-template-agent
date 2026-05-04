@@ -42,7 +42,7 @@ ENV HERMES_HOME=/data \
     API_SERVER_PORT=8642 \
     HERMES_TUI=0
 
-EXPOSE 8642
+EXPOSE 8642 9119
 
 # Switch back to root so the entrypoint can fix the Railway volume's ownership
 # (it mounts as root-owned). The entrypoint drops privileges to `hermes` after

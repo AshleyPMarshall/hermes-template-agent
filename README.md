@@ -9,7 +9,7 @@ The companion web UI lives in a separate repo (`hermes-template-workspace`); dep
 
 - A non-root Debian container with Hermes installed via the official Nous installer.
 - Persistent config, sessions, and learned skills on a Railway Volume mounted at `/data` (via `HERMES_HOME=/data`).
-- The OpenAI-compatible API server (`API_SERVER_ENABLED=true`) listening on `:8642` for the optional workspace service to consume over Railway's private network.
+- The OpenAI-compatible API server on `:8642` and the Hermes dashboard on `:9119`, both bound to the container's interface for the optional workspace service to consume over Railway's private network. Neither is publicly exposed unless you create a Railway domain for that port.
 - Auto-update on rebuild: each `railway up` pulls the current `main` of `NousResearch/hermes-agent`.
 
 ## Deploy
@@ -26,19 +26,20 @@ You will create new credentials *per deployment*; nothing from another deploymen
 5. **Get your Telegram numeric user ID** from [@userinfobot](https://t.me/userinfobot).
 6. **Generate a fresh `HERMES_API_TOKEN`**: `openssl rand -hex 32`. The companion workspace service uses this; do not reuse it across deployments.
 7. **Set environment variables** in Railway. Minimum:
-   - `HERMES_INFERENCE_PROVIDER=openai-codex` (default; or set `OPENROUTER_API_KEY` etc. if using a different provider)
+   - `GOOGLE_API_KEY` (default — Gemini, free tier at https://aistudio.google.com/app/apikey)
+   - `HERMES_MODEL=gemini-2.5-flash`
    - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USERS`, `TELEGRAM_HOME_CHANNEL`
    - `HERMES_TIMEZONE`
-   - `HERMES_API_TOKEN`
-   See `.env.example` for the complete list and inline notes.
+   - `API_SERVER_KEY` and `HERMES_DASHBOARD_TOKEN` (each: `openssl rand -hex 32`) — bearer tokens the workspace service authenticates with
+   See `.env.example` for the complete list and notes on swapping providers.
 8. **Deploy.** First boot takes 5–10 minutes (Nous installer pulls Hermes and dependencies).
-9. **Complete provider auth** (skip if using a static API key):
+9. **(OAuth providers only — skip for static API keys.)** If you chose an OAuth provider (Codex, Qwen, etc.) instead of a static API key, complete the device-code flow:
    ```
    railway ssh --service hermes-agent
-   hermes auth login openai-codex
+   hermes auth add <provider>            # e.g. openai-codex, qwen-oauth
    ```
-   Browser device-code flow. Token is written to `/data/auth.json` and persists.
-10. **Redeploy the service** (`railway service redeploy`) so the agent picks up the auth tokens.
+   The token writes to `/data/auth.json` and persists across redeploys.
+10. **Redeploy the service** (`railway service redeploy`) so the agent picks up the new credentials.
 11. **Message your Telegram bot** to verify.
 
 The container idles on first boot if no LLM credentials are present (no `auth.json`, no API key env vars), so you have time to step 9 without crash-loops.
@@ -48,7 +49,7 @@ Do **not** publicly expose the service's port. The workspace service (Wave 2) ta
 ## Files
 
 - `Dockerfile` — builds the image; runs Nous's official `install.sh`.
-- `entrypoint.sh` — claims ownership of the volume on first boot, then `exec hermes gateway`.
+- `entrypoint.sh` — claims ownership of the volume on first boot, then runs `hermes dashboard` in the background and `hermes gateway` in the foreground.
 - `railway.toml` — Railway build/deploy config.
 - `.env.example` — documented per-deploy variables.
 
